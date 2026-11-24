@@ -115,7 +115,7 @@ const char *const lightPanelStyle = R"(
     QPushButton#add:hover { background: #345761; }
     QPushButton#add:focus { border-color: #233e48; }
     QPushButton#add:disabled { background: rgba(70, 90, 101, 13); border-color: rgba(68, 91, 101, 32); }
-    QPushButton#projectFilter { border-radius: 9px; padding: 0 5px; font-size: 12px; }
+    QPushButton#projectFilter { border-radius: 9px; font-size: 12px; }
     QPushButton#projectFilter:checked { background: rgba(78, 118, 150, 24); }
     QPushButton#projectFilter:checked:hover { background: rgba(78, 118, 150, 39); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { background: transparent; border: 0; color: #344d5b; }
@@ -201,6 +201,18 @@ class ProjectFilterButton final : public QPushButton
 public:
     using QPushButton::QPushButton;
 
+    QSize sizeHint() const override
+    {
+        return QSize(fontMetrics().horizontalAdvance(text()) + iconSize().width() + labelGap + 2 * sidePadding,
+                     minimumHeight());
+    }
+
+    int heightForWidth(int width) const override
+    {
+        QTextLayout label;
+        return qMax(minimumHeight(), qCeil(layoutLabel(label, width).height()) + 8);
+    }
+
 protected:
     // The selected project, rather than clicking the button, controls the tint.
     void nextCheckState() override {}
@@ -209,11 +221,42 @@ protected:
     {
         QStyleOptionButton option;
         initStyleOption(&option);
-        const QRect contents = style()->subElementRect(QStyle::SE_PushButtonContents, &option, this);
-        const int labelWidth = qMax(0, contents.width() - option.iconSize.width() - 4);
-        option.text = option.fontMetrics.elidedText(option.text, Qt::ElideRight, labelWidth, Qt::TextShowMnemonic);
+        option.text.clear();
+        option.icon = QIcon();
         QStylePainter painter(this);
         painter.drawControl(QStyle::CE_PushButton, option);
+        QTextLayout label;
+        const QSizeF textSize = layoutLabel(label, width());
+        const qreal left = (width() - iconSize().width() - labelGap - textSize.width()) / 2;
+        const QRect iconRect(qRound(left), (height() - iconSize().height()) / 2,
+                             iconSize().width(), iconSize().height());
+        icon().paint(&painter, iconRect);
+        painter.setPen(option.palette.color(QPalette::ButtonText));
+        label.draw(&painter, QPointF(left + iconSize().width() + labelGap, (height() - textSize.height()) / 2));
+    }
+
+private:
+    static constexpr int sidePadding = 3;
+    static constexpr int labelGap = 4;
+
+    QSizeF layoutLabel(QTextLayout &label, int width) const
+    {
+        label.setText(text());
+        label.setFont(font());
+        QTextOption wrap;
+        wrap.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        label.setTextOption(wrap);
+        const int available = qMax(1, width - iconSize().width() - labelGap - 2 * sidePadding);
+        QSizeF size(0, 0);
+        label.beginLayout();
+        for (QTextLine line = label.createLine(); line.isValid(); line = label.createLine()) {
+            line.setLineWidth(available);
+            line.setPosition(QPointF(0, size.height()));
+            size.setWidth(qMax(size.width(), line.naturalTextWidth()));
+            size.rheight() += line.height();
+        }
+        label.endLayout();
+        return size;
     }
 };
 
@@ -665,28 +708,29 @@ Panel::Panel(QSettings &settings)
     body->setContentsMargins(panelPadding, panelPadding, panelPadding, panelPadding);
     body->setSpacing(0);
 
-    auto *header = new QHBoxLayout;
-    header->setSpacing(3);
+    header_ = new QHBoxLayout;
+    header_->setSpacing(3);
     auto *title = new QLabel(QStringLiteral("「待办」"), expanded_);
     title->setObjectName(QStringLiteral("title"));
     summary_->setObjectName(QStringLiteral("summary"));
     summary_->setAlignment(Qt::AlignCenter);
     summary_->setFixedHeight(28);
     summary_->setMinimumWidth(34);
-    header->addWidget(title);
-    header->addStretch(1);
+    header_->addWidget(title, 0, Qt::AlignVCenter);
+    header_->addStretch(1);
     projectButton_ = new ProjectFilterButton(expanded_);
     projectButton_->setObjectName(QStringLiteral("projectFilter"));
     projectButton_->setCheckable(true);
     projectButton_->setFocusPolicy(Qt::TabFocus);
     projectButton_->setCursor(Qt::PointingHandCursor);
-    projectButton_->setFixedHeight(28);
-    projectButton_->setMinimumWidth(28);
+    projectButton_->setMinimumSize(44, 28);
     projectButton_->setMaximumWidth(140);
-    projectButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    projectButton_->setIconSize(QSize(20, 20));
-    header->addWidget(projectButton_);
-    header->addWidget(summary_);
+    QSizePolicy filterSize(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    filterSize.setHeightForWidth(true);
+    projectButton_->setSizePolicy(filterSize);
+    projectButton_->setIconSize(QSize(16, 16));
+    header_->addWidget(projectButton_, 0, Qt::AlignVCenter);
+    header_->addWidget(summary_, 0, Qt::AlignVCenter);
 
     collapseButton_ = new QPushButton(expanded_);
     collapseButton_->setObjectName(QStringLiteral("collapse"));
@@ -694,8 +738,8 @@ Panel::Panel(QSettings &settings)
     collapseButton_->setIconSize(QSize(25, 25));
     collapseButton_->setAccessibleName(QStringLiteral("收起待办"));
     collapseButton_->setToolTip(collapseButton_->accessibleName());
-    header->addWidget(collapseButton_);
-    body->addLayout(header);
+    header_->addWidget(collapseButton_, 0, Qt::AlignVCenter);
+    body->addLayout(header_);
     body->addSpacing(headerGap);
 
     tasks_->setObjectName(QStringLiteral("tasks"));
@@ -1198,7 +1242,8 @@ QSize Panel::expandedSize(const QRect &workArea) const
         footer += compactFooterHeight;
     if (!draftTarget_->isHidden())
         footer += draftTarget_->sizeHint().height();
-    const int controlsHeight = 2 * panelPadding + headerHeight + headerGap + compactFooterGap
+    const int topHeight = qMax(headerHeight, header_->heightForWidth(width - 2 * panelPadding));
+    const int controlsHeight = 2 * panelPadding + topHeight + headerGap + compactFooterGap
         + footer + (saveError_->isHidden() ? 0 : saveError_->sizeHint().height());
     const int maxListHeight = std::max(0, maxPanelHeight - controlsHeight);
     int listHeight = visibleTaskCount_ ? 0 : std::max(emptyListHeight, emptyState_->heightForWidth(width - 2 * panelPadding));
@@ -1872,7 +1917,8 @@ void Panel::updateSummary()
         it.value()->setHidden(!visibleProjects.contains(it.key()));
     const QString project = projectFilter_ ? TaskLabels::projectName(*projectFilter_) : QStringLiteral("全部项目");
     const QString label = projectFilter_ ? project : QStringLiteral("全部");
-    projectButton_->setText(QString(label).replace('&', QStringLiteral("&&")));
+    projectButton_->setText(label);
+    projectButton_->setShortcut(QKeySequence());
     projectButton_->setChecked(projectFilter_.has_value());
     projectButton_->setAccessibleName(QStringLiteral("选择项目 · %1").arg(project));
     projectButton_->setToolTip(projectButton_->accessibleName());

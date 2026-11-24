@@ -17,6 +17,7 @@ class GlassMenu;
 class QCloseEvent;
 class QContextMenuEvent;
 class QHideEvent;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QMenu;
@@ -88,6 +89,7 @@ private:
 
     const QString settingsPath_;
     QWidget *expanded_;
+    QHBoxLayout *header_ = nullptr;
     QPushButton *handle_;
     QLabel *summary_;
     QLabel *handleArrow_;
