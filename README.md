@@ -1,10 +1,10 @@
-# 待办面板
+# Todolist Panel · 待办面板
 
 Windows 右上角置顶待办。展开后显示宽 288 逻辑像素的磨砂玻璃卡片。每个有可见待办的项目占一行分组标题，组内任务自动换行。清单按内容增高，超过可见高度时可以滚动查看。输入栏位于底部。收起后在当前屏幕右侧留下带未完成数量的小把手。
 
 ## 使用
 
-- 打开 `dist\bin\TodolistPanel.exe`，点清单底部的小加号即可输入。面板获得焦点时也可以按 `Ctrl+N`，或从托盘菜单选「快速添加待办」。
+- 按下方步骤构建后，打开 `dist\bin\TodolistPanel.exe`，点清单底部的小加号即可输入。面板获得焦点时也可以按 `Ctrl+N`，或从托盘菜单选「快速添加待办」。
 - 按 Enter 或点输入栏左侧的加号保存，输入栏会收回。按 Esc 只收起输入栏，本次运行中再点加号可接着写。空输入栏在离开时会自动收起。
 - 连续录入时，按 Shift+Enter 保存当前待办，光标会留在输入栏，方便直接写下一条。输入时按 Alt+1、Alt+2、Alt+3 可选普通、优先、紧急，下一条从普通开始。
 - 顶部筛选按钮显示「全部」或当前项目名，名称较长时自动换行。点开即可切换，菜单里的勾标出当前选择。在菜单底部输入项目名称并按回车可新建项目。选中项目后添加的任务会自动归入该项目，在「全部项目」中添加的任务默认未分类。
@@ -28,14 +28,18 @@ Windows 右上角置顶待办。展开后显示宽 288 逻辑像素的磨砂玻�
 
 ## 开发
 
-需要 Qt 6.5 或更新版本及其匹配的 C++ 编译器、CMake 和 Ninja。当前机器上的 Qt 6.9.3、MinGW 13.1、CMake 和 Ninja 可以直接使用。
+需要 Qt 6.5 或更新版本及其匹配的 C++ 编译器、CMake 和 Ninja。已用 Qt 6.9.3 和 MinGW 13.1 验证。
 
-在 Qt Creator 中打开 `CMakeLists.txt`，选择 **Desktop Qt 6.9.3 MinGW 64-bit** 套件后构建和运行。也可以在 PowerShell 执行：
+可在 Qt Creator 中打开 `CMakeLists.txt`，选择匹配的 **Desktop Qt MinGW 64-bit** 套件。使用 PowerShell 时，可以把下面的 Qt 和编译器路径改成实际安装路径。
 
 ```powershell
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=D:/Qt/6.9.3/mingw_64 -DCMAKE_CXX_COMPILER=D:/Qt/Tools/mingw1310_64/bin/g++.exe
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/Qt/6.9.3/mingw_64 -DCMAKE_CXX_COMPILER=C:/Qt/Tools/mingw1310_64/bin/g++.exe
 cmake --build build --parallel
 cmake --install build --prefix (Join-Path $PWD dist)
 ```
 
 `dist` 包含 Qt 运行库。把程序移到另一台电脑时，请保留整个目录。
+
+## 许可证
+
+项目源码采用 [MIT 许可证](LICENSE)。Qt 及其他第三方依赖各自适用其许可证。
