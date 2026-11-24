@@ -114,8 +114,8 @@ const char *const lightPanelStyle = R"(
     QPushButton#add:hover { background: #345761; }
     QPushButton#add:focus { border-color: #233e48; }
     QPushButton#add:disabled { background: rgba(70, 90, 101, 13); border-color: rgba(68, 91, 101, 32); }
-    QPushButton#projectFilter { font-size: 12px; color: #33414f; border-radius: 9px; }
-    QPushButton#projectFilter:checked { color: #255675; background: rgba(78, 118, 150, 24); }
+    QPushButton#projectFilter { border-radius: 9px; }
+    QPushButton#projectFilter:checked { background: rgba(78, 118, 150, 24); }
     QPushButton#projectFilter:checked:hover { background: rgba(78, 118, 150, 39); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { background: transparent; border: 0; color: #344d5b; }
     QPushButton#undoTask { font-size: 12px; padding: 0 6px; }
@@ -167,8 +167,7 @@ const char *const darkPanelStyle = R"(
         background: rgba(18, 29, 40, 73);
     }
     QLabel#empty { color: #e7edf2; }
-    QPushButton#projectFilter { color: #e7edf2; }
-    QPushButton#projectFilter:checked { color: #b8d6ea; background: rgba(137, 183, 218, 28); }
+    QPushButton#projectFilter:checked { background: rgba(137, 183, 218, 28); }
     QPushButton#projectFilter:checked:hover { background: rgba(137, 183, 218, 43); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { color: #cedee8; }
     QLabel#saveError { color: #ffc6cc; }
@@ -193,7 +192,7 @@ const char *const darkPanelStyle = R"(
     QScrollBar::handle:vertical { background: #899bac; }
 )";
 
-enum class Icon { Collapse, Expand, Add, QuickAdd };
+enum class Icon { Collapse, Expand, Add, QuickAdd, Filter };
 
 class ProjectFilterButton final : public QPushButton
 {
@@ -317,6 +316,14 @@ QIcon controlIcon(Icon icon, bool dark)
         path.moveTo(9.5, 4);
         path.lineTo(6, 8);
         path.lineTo(9.5, 12);
+        break;
+    case Icon::Filter:
+        path.moveTo(2.5, 4.5);
+        path.lineTo(13.5, 4.5);
+        path.moveTo(4.5, 8);
+        path.lineTo(11.5, 8);
+        path.moveTo(6.5, 11.5);
+        path.lineTo(9.5, 11.5);
         break;
     case Icon::QuickAdd:
     case Icon::Add:
@@ -655,12 +662,13 @@ Panel::Panel(QSettings &settings)
     summary_->setMinimumWidth(34);
     header->addWidget(title);
     header->addStretch(1);
-    projectButton_ = new ProjectFilterButton(QStringLiteral("项目 ▾"), expanded_);
+    projectButton_ = new ProjectFilterButton(expanded_);
     projectButton_->setObjectName(QStringLiteral("projectFilter"));
     projectButton_->setCheckable(true);
     projectButton_->setFocusPolicy(Qt::TabFocus);
     projectButton_->setCursor(Qt::PointingHandCursor);
-    projectButton_->setFixedSize(52, 26);
+    projectButton_->setFixedSize(28, 28);
+    projectButton_->setIconSize(QSize(20, 20));
     header->addWidget(projectButton_);
     header->addWidget(summary_);
 
@@ -941,6 +949,7 @@ void Panel::applyAppearance()
         sheet += QString::fromLatin1(darkPanelStyle);
     setStyleSheet(sheet);
     collapseButton_->setIcon(controlIcon(Icon::Collapse, dark_));
+    projectButton_->setIcon(controlIcon(Icon::Filter, dark_));
     addButton_->setIcon(controlIcon(Icon::Add, dark_));
     quickAdd_->setIcon(controlIcon(Icon::QuickAdd, dark_));
     updateDraftPriority();
