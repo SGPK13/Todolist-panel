@@ -2,9 +2,9 @@
 
 一个固定在 Windows 屏幕右上角的待办浮窗。任务可按项目分组，浮窗可收成屏幕边缘的小把手。
 
-![待办面板实录](assets/demo.gif)
+![待办面板实录](assets/panel-demo-clean.gif)
 
-[MP4](assets/demo.mp4)
+[MP4](assets/panel-demo-clean.mp4)
 
 ## 怎么用
 
