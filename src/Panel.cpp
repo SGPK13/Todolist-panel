@@ -38,6 +38,7 @@
 #include <QStyleHints>
 #include <QStyledItemDelegate>
 #include <QStyleOption>
+#include <QStylePainter>
 #include <QTextLayout>
 #include <QTimer>
 #include <QToolTip>
@@ -114,7 +115,7 @@ const char *const lightPanelStyle = R"(
     QPushButton#add:hover { background: #345761; }
     QPushButton#add:focus { border-color: #233e48; }
     QPushButton#add:disabled { background: rgba(70, 90, 101, 13); border-color: rgba(68, 91, 101, 32); }
-    QPushButton#projectFilter { border-radius: 9px; }
+    QPushButton#projectFilter { border-radius: 9px; padding: 0 5px; font-size: 12px; }
     QPushButton#projectFilter:checked { background: rgba(78, 118, 150, 24); }
     QPushButton#projectFilter:checked:hover { background: rgba(78, 118, 150, 39); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { background: transparent; border: 0; color: #344d5b; }
@@ -167,6 +168,7 @@ const char *const darkPanelStyle = R"(
         background: rgba(18, 29, 40, 73);
     }
     QLabel#empty { color: #e7edf2; }
+    QPushButton#projectFilter { color: #e7edf2; }
     QPushButton#projectFilter:checked { background: rgba(137, 183, 218, 28); }
     QPushButton#projectFilter:checked:hover { background: rgba(137, 183, 218, 43); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { color: #cedee8; }
@@ -202,6 +204,17 @@ public:
 protected:
     // The selected project, rather than clicking the button, controls the tint.
     void nextCheckState() override {}
+
+    void paintEvent(QPaintEvent *) override
+    {
+        QStyleOptionButton option;
+        initStyleOption(&option);
+        const QRect contents = style()->subElementRect(QStyle::SE_PushButtonContents, &option, this);
+        const int labelWidth = qMax(0, contents.width() - option.iconSize.width() - 4);
+        option.text = option.fontMetrics.elidedText(option.text, Qt::ElideRight, labelWidth, Qt::TextShowMnemonic);
+        QStylePainter painter(this);
+        painter.drawControl(QStyle::CE_PushButton, option);
+    }
 };
 
 class TaskInputStyle final : public QProxyStyle
@@ -667,7 +680,10 @@ Panel::Panel(QSettings &settings)
     projectButton_->setCheckable(true);
     projectButton_->setFocusPolicy(Qt::TabFocus);
     projectButton_->setCursor(Qt::PointingHandCursor);
-    projectButton_->setFixedSize(28, 28);
+    projectButton_->setFixedHeight(28);
+    projectButton_->setMinimumWidth(28);
+    projectButton_->setMaximumWidth(140);
+    projectButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     projectButton_->setIconSize(QSize(20, 20));
     header->addWidget(projectButton_);
     header->addWidget(summary_);
@@ -1855,6 +1871,8 @@ void Panel::updateSummary()
     for (auto it = sections_.cbegin(); it != sections_.cend(); ++it)
         it.value()->setHidden(!visibleProjects.contains(it.key()));
     const QString project = projectFilter_ ? TaskLabels::projectName(*projectFilter_) : QStringLiteral("全部项目");
+    const QString label = projectFilter_ ? project : QStringLiteral("全部");
+    projectButton_->setText(QString(label).replace('&', QStringLiteral("&&")));
     projectButton_->setChecked(projectFilter_.has_value());
     projectButton_->setAccessibleName(QStringLiteral("选择项目 · %1").arg(project));
     projectButton_->setToolTip(projectButton_->accessibleName());
