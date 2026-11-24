@@ -114,8 +114,9 @@ const char *const lightPanelStyle = R"(
     QPushButton#add:hover { background: #345761; }
     QPushButton#add:focus { border-color: #233e48; }
     QPushButton#add:disabled { background: rgba(70, 90, 101, 13); border-color: rgba(68, 91, 101, 32); }
-    QPushButton#projectFilter { font-size: 12px; color: #20262c; }
-    QPushButton#projectFilter:focus { border-color: rgba(55, 88, 115, 85); }
+    QPushButton#projectFilter { font-size: 12px; color: #33414f; border-radius: 9px; }
+    QPushButton#projectFilter:checked { color: #255675; background: rgba(78, 118, 150, 24); }
+    QPushButton#projectFilter:checked:hover { background: rgba(78, 118, 150, 39); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { background: transparent; border: 0; color: #344d5b; }
     QPushButton#undoTask { font-size: 12px; padding: 0 6px; }
     QLabel#draftTarget { font-size: 12px; padding-left: 5px; }
@@ -167,7 +168,8 @@ const char *const darkPanelStyle = R"(
     }
     QLabel#empty { color: #e7edf2; }
     QPushButton#projectFilter { color: #e7edf2; }
-    QPushButton#projectFilter:focus { border-color: rgba(208, 228, 246, 90); }
+    QPushButton#projectFilter:checked { color: #b8d6ea; background: rgba(137, 183, 218, 28); }
+    QPushButton#projectFilter:checked:hover { background: rgba(137, 183, 218, 43); }
     QPushButton#sectionAdd, QPushButton#sectionToggle { color: #cedee8; }
     QLabel#saveError { color: #ffc6cc; }
     QPushButton:hover { background: rgba(232, 242, 255, 27); }
@@ -192,6 +194,16 @@ const char *const darkPanelStyle = R"(
 )";
 
 enum class Icon { Collapse, Expand, Add, QuickAdd };
+
+class ProjectFilterButton final : public QPushButton
+{
+public:
+    using QPushButton::QPushButton;
+
+protected:
+    // The selected project, rather than clicking the button, controls the tint.
+    void nextCheckState() override {}
+};
 
 class TaskInputStyle final : public QProxyStyle
 {
@@ -643,9 +655,12 @@ Panel::Panel(QSettings &settings)
     summary_->setMinimumWidth(34);
     header->addWidget(title);
     header->addStretch(1);
-    projectButton_ = new QPushButton(expanded_);
+    projectButton_ = new ProjectFilterButton(QStringLiteral("项目 ▾"), expanded_);
     projectButton_->setObjectName(QStringLiteral("projectFilter"));
-    projectButton_->setFixedSize(69, headerHeight);
+    projectButton_->setCheckable(true);
+    projectButton_->setFocusPolicy(Qt::TabFocus);
+    projectButton_->setCursor(Qt::PointingHandCursor);
+    projectButton_->setFixedSize(52, 26);
     header->addWidget(projectButton_);
     header->addWidget(summary_);
 
@@ -677,6 +692,8 @@ Panel::Panel(QSettings &settings)
 
     emptyState_->setObjectName(QStringLiteral("empty"));
     emptyState_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    emptyState_->setTextFormat(Qt::PlainText);
+    emptyState_->setWordWrap(true);
     body->addWidget(tasks_, 1);
     body->addWidget(emptyState_, 1);
     saveError_->setObjectName(QStringLiteral("saveError"));
@@ -1159,7 +1176,7 @@ QSize Panel::expandedSize(const QRect &workArea) const
     const int controlsHeight = 2 * panelPadding + headerHeight + headerGap + compactFooterGap
         + footer + (saveError_->isHidden() ? 0 : saveError_->sizeHint().height());
     const int maxListHeight = std::max(0, maxPanelHeight - controlsHeight);
-    int listHeight = visibleTaskCount_ ? 0 : emptyListHeight;
+    int listHeight = visibleTaskCount_ ? 0 : std::max(emptyListHeight, emptyState_->heightForWidth(width - 2 * panelPadding));
     const auto *delegate = static_cast<TaskDelegate *>(tasks_->itemDelegate());
     for (int row = 0; visibleTaskCount_ && row < tasks_->count() && listHeight < maxListHeight; ++row) {
         const auto *item = tasks_->item(row);
@@ -1829,8 +1846,7 @@ void Panel::updateSummary()
     for (auto it = sections_.cbegin(); it != sections_.cend(); ++it)
         it.value()->setHidden(!visibleProjects.contains(it.key()));
     const QString project = projectFilter_ ? TaskLabels::projectName(*projectFilter_) : QStringLiteral("全部项目");
-    const QString shortName = projectButton_->fontMetrics().elidedText(project, Qt::ElideRight, 51);
-    projectButton_->setText(QString(shortName).replace('&', "&&") + QStringLiteral(" ▾"));
+    projectButton_->setChecked(projectFilter_.has_value());
     projectButton_->setAccessibleName(QStringLiteral("选择项目 · %1").arg(project));
     projectButton_->setToolTip(projectButton_->accessibleName());
     const auto count = QStringLiteral("%1 项未完成").arg(remaining);
@@ -1845,10 +1861,10 @@ void Panel::updateSummary()
     handle_->setToolTip(handle_->accessibleName());
     tasks_->setVisible(visibleTaskCount_ > 0);
     emptyState_->setVisible(visibleTaskCount_ == 0);
-    if (unfinishedOnly_ && matchingTasks && !visibleTaskCount_)
-        emptyState_->setText(QStringLiteral("已全部完成"));
-    else
-        emptyState_->setText(projectFilter_ ? QStringLiteral("此分类暂无待办") : QStringLiteral("暂无待办"));
+    if (!visibleTaskCount_) {
+        const QString message = unfinishedOnly_ && matchingTasks ? QStringLiteral("已全部完成") : QStringLiteral("暂无待办");
+        emptyState_->setText(projectFilter_ ? project + QChar::LineFeed + message : message);
+    }
     tasks_->viewport()->update();
     if (windowHandle() && !collapsed_)
         positionPanel();
