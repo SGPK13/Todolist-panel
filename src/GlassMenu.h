@@ -7,6 +7,7 @@ class GlassMenu final : public QMenu
 public:
     GlassMenu(QWidget *parent, QWidget *panelContent, bool dark, int transparency);
     void setTransparency(int percent);
+    void setActionTextColor(QAction *action, const QColor &color);
 
 protected:
     void showEvent(QShowEvent *event) override;

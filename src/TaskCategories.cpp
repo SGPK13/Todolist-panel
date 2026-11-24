@@ -210,7 +210,7 @@ void Panel::selectProject(std::optional<QString> project)
     tasks_->scrollToTop();
 }
 
-void Panel::populateProjectMenu(QMenu &menu, QListWidgetItem *item)
+void Panel::populateProjectMenu(GlassMenu &menu, QListWidgetItem *item)
 {
     const auto choose = [this, item](const QString &project) {
         if (item)
@@ -228,6 +228,8 @@ void Panel::populateProjectMenu(QMenu &menu, QListWidgetItem *item)
     choices.prepend(QString());
     for (const QString &project : choices) {
         auto *action = menu.addAction(TaskLabels::projectName(project));
+        const auto color = TaskLabels::projectTitleColor(projects_.indexOf(project), projectColors_.value(project), dark_);
+        menu.setActionTextColor(action, color);
         action->setCheckable(true);
         action->setChecked(item ? item->data(TaskLabels::Project).toString() == project : projectFilter_ == project);
         connect(action, &QAction::triggered, this, [choose, project] { choose(project); });

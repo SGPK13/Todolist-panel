@@ -166,6 +166,13 @@ public:
                 p->drawRoundedRect(row, 8, 8);
             }
             QColor text = ink;
+            if (const auto *menu = qobject_cast<const QMenu *>(widget)) {
+                if (const auto *action = menu->actionAt(row.center())) {
+                    const auto color = action->property("menuActionTextColor").value<QColor>();
+                    if (color.isValid())
+                        text = color;
+                }
+            }
             if (!item->icon.isNull()) {
                 item->icon.paint(p, QRect(label.left(), row.center().y() - 8, 16, 16));
                 label.setLeft(label.left() + 18);
@@ -176,7 +183,10 @@ public:
             p->drawText(label, Qt::AlignVCenter | Qt::AlignLeft,
                         item->fontMetrics.elidedText(item->text, Qt::ElideRight, label.width()));
             p->translate(row.right() - 14, row.center().y());
-            p->setPen(QPen(text, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            QColor indicator = ink;
+            if (!item->state.testFlag(State_Enabled))
+                indicator.setAlpha(110);
+            p->setPen(QPen(indicator, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
             QPainterPath path;
             if (item->checked) {
                 path.moveTo(-4, 0);
@@ -223,6 +233,11 @@ void GlassMenu::setTransparency(int percent)
 {
     transparency_ = percent;
     update();
+}
+
+void GlassMenu::setActionTextColor(QAction *action, const QColor &color)
+{
+    action->setProperty("menuActionTextColor", color);
 }
 
 void GlassMenu::clipBackdrop()

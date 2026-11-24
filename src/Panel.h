@@ -13,6 +13,7 @@
 #include <optional>
 
 class GlassShadow;
+class GlassMenu;
 class QCloseEvent;
 class QContextMenuEvent;
 class QHideEvent;
@@ -75,7 +76,7 @@ private:
     void offerUndo(const QString &message);
     void updateDraftTarget();
     void assignProject(QListWidgetItem *item, const QString &project);
-    void populateProjectMenu(QMenu &menu, QListWidgetItem *item = nullptr);
+    void populateProjectMenu(GlassMenu &menu, QListWidgetItem *item = nullptr);
     void populatePriorityMenu(QMenu &menu, QListWidgetItem *item = nullptr);
     void selectProject(std::optional<QString> project);
     void updateDraftPriority();
