@@ -4,8 +4,6 @@
 
 ![待办面板实录](assets/panel-demo-clean.gif)
 
-[MP4](assets/panel-demo-clean.mp4)
-
 ## 怎么用
 
 - 点底部的 `+` 添加待办，按回车保存。
